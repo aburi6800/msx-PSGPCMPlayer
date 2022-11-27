@@ -11,6 +11,10 @@ PUBLIC PCMPLAY
 
 SECTION code_user
 
+GICINI:	                EQU $0090	; PSGの初期化アドレス
+WRTPSG:	                EQU $0093   ; PSGレジスタへのデータ書込アドレス
+RDPSG:	                EQU $0096   ; PSGレジスタへのデータ読み出し
+
 ; ====================================================================================================
 ; PCMPLAY
 ;
@@ -22,13 +26,39 @@ SECTION code_user
 ; - 再生中は割り込みが禁止されます
 ; ====================================================================================================
 PCMPLAY:
-    DI
+    di
 
+    ; PSG REGISTER BACKUP
     exx
+    ld b,16
+    ld hl,PCMPLAY_PSGREG_BACKUP
+PCMPLAY_INIT:
+    ld a,b
+    dec a
+    call RDPSG
+    ld (hl),a
+    inc hl
+    djnz PCMPLAY_INIT
+
+    ; PSG REGISTER INITIALIZE
+    call GICINI
+
+    ; PSG CH A〜CH C TONE RESET
+    ld e,0
+    ld a,0
+    ld b,6
+PCMPLAY_TONERESET:
+    call WRTPSG
+    inc a
+    djnz PCMPLAY_TONERESET
+
     ld c,$A1
     ld d,0
+
     exx
+
 PCMPLAY_LOOP:
+    ; GET TONE DATA
     ld a,(hl)
     inc hl
     exx
@@ -40,12 +70,16 @@ PCMPLAY_LOOP:
     ld e,(hl)
     inc h
     ld h,(hl)
+
+    ; CHANGE CH A〜CH C LEVEL
     ld a,8
     out ($A0),a     ; play as fast as possible
-    inc a
     out (c),b
+
+    inc a
     out ($A0),a
     out (c),e
+
     inc a
     out ($A0),a
     out (c),h
@@ -60,11 +94,20 @@ PCMPLAY_WAITLOOP:
     ld a,d
     or e
     jp nz,PCMPLAY_LOOP
-#    ret
 
-PCMPLAY_EXIT:
-    EI
-    RET
+    ei
+    ; PSG REGISTER RESTORE
+    ld b,16
+    xor a
+    ld hl,PCMPLAY_PSGREG_BACKUP
+PCMPLAY_END:
+    ld e,(hl)
+    call WRTPSG
+    inc a
+    inc hl
+    djnz PCMPLAY_END
+
+    ret
 
 
 ; ====================================================================================================
@@ -124,3 +167,16 @@ PCMPLAY_SAMPLE_TABLE:
     db 01,02,03,04,00,05,02,06,04,04,05,00,06,02,03,04
     db 07,05,05,06,06,00,01,07,03,04,04,00,08,02,03,04
     db 04,05,07,00,06,01,08,07,04,05,05,06,06,09,09,11
+
+
+; ====================================================================================================
+; ワークエリア
+; プログラム起動時にcrtでゼロでramに設定される 
+; ====================================================================================================
+SECTION bss_user
+
+; ----------------------------------------------------------------------------------------------------
+; PSGレジスタバックアップ
+; ----------------------------------------------------------------------------------------------------
+PCMPLAY_PSGREG_BACKUP:
+    DEFS 16
