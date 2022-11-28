@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
 
 #
-# wav2asm.py
+# wav2pcm.py
 #
-# 11Khz8bitモノラルのPCMデータを格納したwavファイルを、.asmソースに変換する。
+# 11Khz or 8KHzの8bitモノラルのwavファイルからPCMデータを抽出して保存する。
 # なお、wavコンテナの各情報は以下。
 #
 # RIFFチャンク（アドレス固定）
@@ -30,27 +30,34 @@
 # - +0x0004〜+0x0007 4byte  +0x0008以降のデータサイズ
 # - +0x0008〜               データ
 
-import binascii
 import os
+import sys
+import traceback
+import argparse
+import binascii
 
 data = ""
 pos = 0x0000
 
-def execute(filename):
+def main():
+    '''
+    メイン処理\n
+    '''
     global data
     global pos
 
-    if '/' in filename:
-        path = filename
-    else:
-        path = os.path.normpath(os.path.join(os.path.dirname(__file__), filename))
+    # 引数パース
+    argparser = argparse.ArgumentParser(description="Extract PCM data from a WAV file.\nWAV files must be 8-bit mono at 11 KHz or 8 KHz.")
+    argparser.add_argument("infile", help="WAV file name to input.")
+    argparser.add_argument("--outfile", "-o", help="PCM file name for output.", default="out.pcm")
+    argparser.add_argument("--force", "-f", action="store_const", const="", help="Ignore output even if the file exists.")
+    argparser.add_argument("--ver", "-v", action="version", version="%(prog)s 0.3.0")
+    args = argparser.parse_args()
 
-    with open(path, mode="rb") as f:
-        data = f.read().hex()
-        f.close()
+    # 入力ファイル取得
+    getData(args.infile)
 
     # 取得したデータの長さ分処理する
-    print("data size:" + str(len(data)/2) + "bytes.")
     while pos < len(data)/2:
 
         # Chank名取得
@@ -60,18 +67,40 @@ def execute(filename):
         elif chankName == "fmt ":
             checkFmtChank()
         elif chankName == "data":
-            checkDataChank()
+            checkDataChank(args.outfile, args.force)
         elif chankName == "LIST":
             checkListChank()
-        
 
-#    datasize = int.from_bytes(binascii.a2b_hex(data[0x0028*2:0x002A*2]), "little")
-#    print("Data size : " + str(datasize) + "bytes")
 
-#    path = os.path.normpath(os.path.join(os.path.dirname(__file__), "sample.pcm"))
-#    with open(path, mode="wb") as f:
-#        data = f.write( bytes.fromhex( data[0x002c*2:(0x002c+datasize)*2] ) )
-#        f.close()
+def getData(inWAVFile:str):
+    '''
+    入力ファイル取得処理\n
+    inWAVFile : 入力WAVファイル
+    '''
+    global data
+
+    try:
+        # 拡張子チェック
+        if os.path.splitext(inWAVFile)[1] != ".wav":
+            raise Exception("File extension is not .wav.")
+
+        # 入力ファイルのフルパスを設定
+        filepath = filePathUtil(inWAVFile)
+
+        # 存在チェック
+        if os.path.exists(filepath) == False:
+            raise Exception("File not found.")
+
+        # ファイル読み込み
+        with open(filepath, mode="rb") as f:
+            data = f.read().hex()
+            f.close()
+
+    except Exception as e:
+        print(traceback.format_exception_only(type(e), e)[0])
+        sys.exit()
+
+    return
 
 
 def checkRIFFChank():
@@ -83,7 +112,6 @@ def checkRIFFChank():
 
     # 全体のデータサイズ取得
     size = getInt4byteData()
-    print("データサイズ : " + str(size))
     pos += 4
     return     
 
@@ -97,38 +125,43 @@ def checkFmtChank():
 
     # fmtチャンクバイト数取得
     size = getInt4byteData()
-    print("fmtチャンクサイズ : " + str(size))
     pos_sv = pos
 
-    # フォーマットコードチェック
-    if getInt2byteData() != 0x0001:
-        # PCMでなければエラー
-        raise("PCMデータではありません。")
+    try:
+        # フォーマットコードチェック
+        if getInt2byteData() != 0x0001:
+            # PCMでなければエラー
+            raise Exception("This is not PCM data.")
 
-    # チャンネル数はスキップ
-    pos += 2
+        # チャンネル数はスキップ
+        pos += 2
 
-    # サンプリングレートチェック
-    v = getInt4byteData()
-    if v != 0x2b11 and v != 0x1f40:
-        # 11025,8000以外であればエラー
-        raise("サンプリングレートが11KHz/8KHzではありません。")
+        # サンプリングレートチェック
+        v = getInt4byteData()
+        if v != 0x2b11 and v != 0x1f40: # 2b11は11KHz、1f40は8KHz
+            # 8000以外であればエラー
+            raise Exception("Sampling rate is not 11Khz/8KHz.")
 
-    # データ速度はスキップ
-    pos += 4
+        # データ速度はスキップ
+        pos += 4
 
-    # ブロックサイズはスキップ
-    pos += 2
+        # ブロックサイズはスキップ
+        pos += 2
 
-    # サンプルあたりのビット数はスキップ
-    pos += 2
+        # サンプルあたりのビット数はスキップ
+        pos += 2
 
-    
-    pos = pos_sv + size
+        # 次のチャンクの先頭にセット
+        pos = pos_sv + size
+
+    except Exception as e:
+        print(traceback.format_exception_only(type(e), e)[0])
+        sys.exit()
+
     return     
 
 
-def checkDataChank():
+def checkDataChank(outPCMFile:str, force:str):
     '''
     dataチャンクの処理\n
     '''
@@ -136,19 +169,33 @@ def checkDataChank():
     global pos
 
     size = getInt4byteData()
-    print("dataチャンクサイズ : " + str(size))
     pos_sv = pos
 
     # 波形データのサイズを取得
     datasize = getInt4byteData()
 
-    # 波形データをバイトデータとしてファイルに出力
-    path = os.path.normpath(os.path.join(os.path.dirname(__file__), "sample.pcm"))
-    with open(path, mode="wb") as f:
-        f.write( bytes.fromhex( data[pos*2:(pos+datasize)*2] ) )
-        f.close()
+    try:
+        # 出力ファイルのフルパスを設定
+        filepath = filePathUtil(outPCMFile)
 
-    pos = pos_sv + size
+        # 存在チェック
+        # オプション --force(-f)が設定されている場合はエラーとしない
+        if os.path.exists(filepath) and force == None:
+            raise FileExistsError("Specified file already exists.")
+
+        # 波形データをバイトデータとしてファイルに出力
+        with open(filepath, mode="wb") as f:
+            f.write( bytes.fromhex( data[pos*2:(pos+datasize)*2] ) )
+            f.close()
+            print("output data size " + str(size - 4) + "bytes.")
+
+        # 次のチャンクの先頭にセット
+        pos = pos_sv + size
+
+    except Exception as e:
+        print(traceback.format_exception_only(type(e), e)[0])
+        sys.exit()
+
     return     
 
 
@@ -160,9 +207,8 @@ def checkListChank():
     global pos
 
     size = getInt4byteData()
-    print("LISTチャンクサイズ : " + str(size))
 
-    # 全てスキップ
+    # 次のチャンクの先頭にセット
     pos += size
 
     return     
@@ -180,6 +226,7 @@ def getStringData():
     for i in range(0, 4):
         result += chr(int(data[(pos)*2:(pos+1)*2], 16))
         pos += 1
+
     return result
 
 
@@ -193,6 +240,7 @@ def getInt2byteData():
 
     result = getIntValue(pos, pos+1)
     pos += 2
+
     return result
 
 
@@ -206,6 +254,7 @@ def getInt4byteData():
 
     result = getIntValue(pos, pos+3)
     pos += 4
+
     return result
 
 
@@ -221,5 +270,24 @@ def getIntValue(startPos, endPos):
     return int.from_bytes(binascii.a2b_hex(data[startPos*2:(endPos+1)*2]), "little")
 
 
+def filePathUtil(path:str):
+    '''
+    ファイルパスユーティリティ\n
+    引数のパスにディレクトリを含んでいない場合、カレントディレクトリを付与したフルパスを生成して返却します。\n
+    path : ファイルパス
+    '''
+    # 入力ファイルのフルパスからファイル名を取得
+    filename = os.path.basename(path)
+
+    # 入力ファイルのフルパスからファイルパスを取得
+    filepath = os.path.dirname(path)
+    if filepath == "" or filepath == None:
+        # ファイルパスが取得できなかった場合（ファイル名のみ指定された場合）は現在のパスを設定
+#        filepath = os.path.normpath(os.path.join(os.path.dirname(__file__), filename))
+        filepath = os.path.dirname(__file__)
+
+    return filepath + os.sep + filename
+
+
 if __name__ == "__main__":
-    execute("test_8.wav")
+    main()
