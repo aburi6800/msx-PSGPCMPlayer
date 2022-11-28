@@ -19,6 +19,8 @@ https://webmsx.org/?MACHINE=MSX1J&ROM=https://github.com/aburi6800/msx-PSGPCMPla
 
 ## 使用方法
 
+- pcmplayer.asmを利用するプロジェクトのディレクトリにコピーします。
+- 初期設定では8KHzの再生に対応しています。11KHzの再生を行う場合は、87行目のコメントを外し、88行目をコメントにしてください。
 - 再生するデータを準備します。（次の「PCMデータの作成」を参照ください）
 - プログラムソースの先頭で、以下の指定を行います。
 ```
@@ -68,7 +70,7 @@ $ zcc +msx -create-app -subtype=rom pcmplayer.asm sample.asm -o=../../dist/build
 ## PCMデータの作成
 
 使用できるPCMデータは、以下形式となります。  
-- サンプリングレート8KMz
+- サンプリングレート11KHz or 8KMz
 - ビットレート8bit
 - モノラル
 
@@ -76,8 +78,11 @@ $ zcc +msx -create-app -subtype=rom pcmplayer.asm sample.asm -o=../../dist/build
 1. 44.1KHz16bitステレオ（通常の設定）でwavファイルを作成する  
     なお、録音したデータの切り出しは各種ツールを使用しますが、以下サイトでも行えます。
     https://audiotrimmer.com/
-1. ffmpegを使用して、8KHz8bitモノラルのwavファイルに変換する
+1. ffmpegを使用して、11KHz or 8KHz 8bitモノラルのwavファイルに変換する
     ```
+    11KHzの場合：
+    $ ffmpeg -i <入力wavファイル名> -ac 1 -ar 11025 -acodec pcm_u8 <出力wavファイル名>
+    8KHzの場合：
     $ ffmpeg -i <入力wavファイル名> -ac 1 -ar 8000 -acodec pcm_u8 <出力wavファイル名>
     ```
     > または、以下サイトを使用して変換できます。  
@@ -97,16 +102,25 @@ $ zcc +msx -create-app -subtype=rom pcmplayer.asm sample.asm -o=../../dist/build
 
 ## リリースノート
 
-2022/11/27  Version 0.2.0
-- pcmplayer.asm
+### pcmplayer.asm
+
+- 2022/11/27  Version 0.2.0
     - PSGレジスタの保存/復元、初期化を追加
     - WebMSXで実行した際にCh1〜3のトーンが初期化されていない不具合に対応
-- wav2pcm.py
+
+- 2022/11/26  Version 0.1.0
+    - 初版作成
+
+### wav2pcm.py
+
+- 2022/11/28  Version 0.3.0
+    - 引数に対応。
+    - 任意のパスのファイルの処理に対応。
+
+- 2022/11/27  Version 0.2.0
     - wavコンテナのチャンクを正しく取得して処理するように修正
 
-2022/11/26  Version 0.1.0
-- pcmplayer.asm
-- wav2pcm.py
+- 2022/11/26  Version 0.1.0
     - 初版作成
 
 ## Thanks
