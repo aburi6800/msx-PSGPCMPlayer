@@ -17,20 +17,15 @@ MIT Lisence
 
 https://webmsx.org/?MACHINE=MSX1J&ROM=https://github.com/aburi6800/msx-PSGPCMPlayer/raw/main/dist/sample.rom&FAST_BOOT
 
-## 使用方法
+## 仕様
 
-- pcmplayer.asmを利用するプロジェクトのディレクトリにコピーします。
-- 初期設定では8KHzの再生に対応しています。11KHzの再生を行う場合は、87行目のコメントを外し、88行目をコメントにしてください。
-- 再生するデータを準備します。（次の「PCMデータの作成」を参照ください）
-- プログラムソースの先頭で、以下の指定を行います。
-```
-EXTERN PCMPLAY
-```
-- HLレジスタにPCMデータの先頭アドレス、DEレジスタにデータ長(byte)を指定して、以下を実行します。
-```
-    CALL PCMPLAY
-```
-- 再生中は割り込み禁止となり、他の処理が停止します。再生が終わると制御を戻します。
+- このPCMプレイヤーで使用できるPCMデータは、以下形式となります。  
+    - サンプリングレート11KHz or 8KMz（デフォルト8KHz、11KHzは要ソース修正）
+    - ビットレート8bit
+    - モノラル
+> 初期設定では8KHzの再生を行います。  
+> 11KHzの再生を行う場合は、87行目のコメントを外し、88行目をコメントにしてください。
+- 再生中は一切の割り込みを禁止します。
 
 ## ビルド方法
 
@@ -67,32 +62,50 @@ includeファイルのパス指定など、他オプションの詳細につい�
 $ zcc +msx -create-app -subtype=rom pcmplayer.asm sample.asm -o=../../dist/build.rom 
 ```
 
+## 使用方法
+
+- 再生するデータを準備します。（次の「PCMデータの作成」を参照ください）
+- pcmplayer.asmを利用するプロジェクトのディレクトリにコピーします。
+- プログラムソースの先頭で、以下の指定を行います。
+```
+    EXTERN PCMPLAY
+```
+- HLレジスタにPCMデータの先頭アドレス、DEレジスタにデータ長(byte)を指定して、以下を実行します。
+```
+    CALL PCMPLAY
+```
+- 再生中は割り込み禁止となり、他の処理が停止します。再生が終わると制御を戻します。
+
 ## PCMデータの作成
 
-使用できるPCMデータは、以下形式となります。  
-- サンプリングレート11KHz or 8KMz
-- ビットレート8bit
-- モノラル
+このプロジェクトに、WAVファイルからPCMデータを抽出するPythonスクリプト（`wav2pcm.py`）を用意しています。  
+このスクリプトは、ffmpegをインストールした環境で使用できますので、事前にインストールしてください。（ダウンロードは[こちら](https://ffmpeg.org/)でできます）  
 
 以下の手順で作成します。
-1. 44.1KHz16bitステレオ（通常の設定）でwavファイルを作成する  
+1. wavファイルを作成する  
+    作成するwavファイルは、44.1KHz16bitステレオで構いません。
     なお、録音したデータの切り出しは各種ツールを使用しますが、以下サイトでも行えます。
     https://audiotrimmer.com/
-1. ffmpegを使用して、11KHz or 8KHz 8bitモノラルのwavファイルに変換する
+
+1. PCMデータを抽出する  
+    最初に実行する前に、必要なモジュールをインストールします。
     ```
-    11KHzの場合：
-    $ ffmpeg -i <入力wavファイル名> -ac 1 -ar 11025 -acodec pcm_u8 <出力wavファイル名>
-    8KHzの場合：
-    $ ffmpeg -i <入力wavファイル名> -ac 1 -ar 8000 -acodec pcm_u8 <出力wavファイル名>
+    $ cd src/python
+    $ pip install -r requirements.txt
     ```
-    > または、以下サイトを使用して変換できます。  
-    > https://www.petitmonte.com/labo/wave-format/
-1. `src/python/wav2pcm.py`を使用し、PCMデータを抽出する
-    > 現在、入力ファイル名と出力ファイル名を指定できず、固定になっています、すみません。
-1. 使用するプログラムでincludeする
+    その後、以下で使用できます。
+    ```
+    $ python wav2pcm.py [入力ファイル名] -o [出力ファイル名]
+    ```
+    なお、任意で以下のオプションを使用できます。   
+    - -f 既存のファイルに上書きする  
+    - -r サンプリングレートを指定する(8 or 11)  
+    - -h ヘルプ  
+
+1. 作成されたPCMデータを、使用するプログラムでincludeする
     ```
     PCMDATA:
-        INCBIN "assets/sample_8.pcm"
+        INCBIN "[PCMファイル名]"
     PCMDATA_END:
         DB $7F
     ```
@@ -112,6 +125,10 @@ $ zcc +msx -create-app -subtype=rom pcmplayer.asm sample.asm -o=../../dist/build
     - 初版作成
 
 ### wav2pcm.py
+
+- 2022/12/03  Version 0.4.0
+    - サンプリングレートの変換に対応。
+    - -rオプションを追加（出力するPCMファイルのサンプリングレートを指定）
 
 - 2022/11/28  Version 0.3.0
     - 引数に対応。
