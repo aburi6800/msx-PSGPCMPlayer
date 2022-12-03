@@ -35,7 +35,7 @@ https://webmsx.org/?MACHINE=MSX1J&ROM=https://github.com/aburi6800/msx-PSGPCMPla
 
 ### cmakeを利用する場合の手順：
 
-このプロジェクトに含まれている`CMakeLists.txt`を編集し、このプレイヤーのソース(`psmplayer,asm`)と作成したソースを指定します。  
+このプロジェクトに含まれている`CMakeLists.txt`を編集し、このプレイヤーのソース(`psmplayer.asm`)と作成したソースを指定します。  
 たとえば、サンプルプログラムの場合は以下の定義になっています。  
 ```
 add_source_files(

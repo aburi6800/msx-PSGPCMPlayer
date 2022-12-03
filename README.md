@@ -34,7 +34,7 @@ https://webmsx.org/?MACHINE=MSX1J&ROM=https://github.com/aburi6800/msx-PSGPCMPla
 
 ### To use cmake:
 
-Edit the `CMakeLists.txt` included in this project to specify the source for this player (`psmplayer,asm`) and the source you created.   
+Edit the `CMakeLists.txt` included in this project to specify the source for this player (`psmplayer.asm`) and the source you created.   
 For example, the sample program defines the following.  
 ```
 add_source_files(
