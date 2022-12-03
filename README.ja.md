@@ -1,4 +1,8 @@
-# PCMPlayer
+[ [Engligh](README.md) | [日本語](README.ja.md) ]
+
+---
+
+# PCMPlayer for MSX
 
 ## 概要
 
@@ -23,8 +27,8 @@ https://webmsx.org/?MACHINE=MSX1J&ROM=https://github.com/aburi6800/msx-PSGPCMPla
     - サンプリングレート11KHz or 8KMz（デフォルト8KHz、11KHzは要ソース修正）
     - ビットレート8bit
     - モノラル
-> 初期設定では8KHzの再生を行います。  
-> 11KHzの再生を行う場合は、87行目のコメントを外し、88行目をコメントにしてください。
+    > 初期設定では8KHzの再生を行います。  
+    > 11KHzの再生を行う場合は、87行目のコメントを外し、88行目をコメントにしてください。
 - 再生中は一切の割り込みを禁止します。
 
 ## ビルド方法
@@ -56,7 +60,7 @@ $ make clean && make
 ### zccコマンドを利用する場合の手順：
 
 ソースディレクトリに入り、以下コマンドを実行します。（ソースファイル名は、適宜変更してください）  
-コマンドは`zcc`ですが、アセンブラとCのどちらのソースでも同じです。  
+コマンドは`zcc`ですが、アセンブラでもCでも同じです。  
 includeファイルのパス指定など、他オプションの詳細については`zcc -h`で表示されるヘルプを参照ください。  
 ```
 $ zcc +msx -create-app -subtype=rom pcmplayer.asm sample.asm -o=../../dist/build.rom 
@@ -65,7 +69,7 @@ $ zcc +msx -create-app -subtype=rom pcmplayer.asm sample.asm -o=../../dist/build
 ## 使用方法
 
 - 再生するデータを準備します。（次の「PCMデータの作成」を参照ください）
-- pcmplayer.asmを利用するプロジェクトのディレクトリにコピーします。
+- `pcmplayer.asm`を利用するプロジェクトのディレクトリにコピーします。
 - プログラムソースの先頭で、以下の指定を行います。
 ```
     EXTERN PCMPLAY
@@ -79,7 +83,7 @@ $ zcc +msx -create-app -subtype=rom pcmplayer.asm sample.asm -o=../../dist/build
 ## PCMデータの作成
 
 このプロジェクトに、WAVファイルからPCMデータを抽出するPythonスクリプト（`wav2pcm.py`）を用意しています。  
-このスクリプトは、ffmpegをインストールした環境で使用できますので、事前にインストールしてください。（ダウンロードは[こちら](https://ffmpeg.org/)でできます）  
+このスクリプトは、`ffmpeg`をインストールした環境で使用できますので、事前にインストールしてください。（ダウンロードは[こちら](https://ffmpeg.org/)でできます）  
 
 以下の手順で作成します。
 1. wavファイルを作成する  
@@ -88,17 +92,19 @@ $ zcc +msx -create-app -subtype=rom pcmplayer.asm sample.asm -o=../../dist/build
     https://audiotrimmer.com/
 
 1. PCMデータを抽出する  
-    最初に実行する前に、必要なモジュールをインストールします。
+    初めて実行するときは、必要なモジュールをインストールします。
     ```
     $ cd src/python
     $ pip install -r requirements.txt
     ```
     その後、以下で使用できます。
     ```
-    $ python wav2pcm.py [入力ファイル名] -o [出力ファイル名]
+    $ python wav2pcm.py [入力ファイル名]
     ```
+    デフォルトでは、スクリプトと同じディレクトリに`out.pcm'のファイル名で作成されます。  
     なお、任意で以下のオプションを使用できます。   
-    - -f 既存のファイルに上書きする  
+    - -o 出力ファイル名を指定する
+    - -f 既存のファイルに強制的に上書きする  
     - -r サンプリングレートを指定する(8 or 11)  
     - -h ヘルプ  
 
